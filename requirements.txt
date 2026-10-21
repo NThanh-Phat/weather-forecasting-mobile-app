@@ -1,0 +1,4 @@
+- Python và TensorFlow/Keras
+- Open-Meteo API
+- pandas và NumPy
+- Scikit-learn scaler

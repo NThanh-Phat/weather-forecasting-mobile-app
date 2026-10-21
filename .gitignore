@@ -1,0 +1,164 @@
+# ==================================================
+# WEATHER FORECASTING MOBILE APP - GITIGNORE
+# FE: Flutter | BE: ASP.NET Core | ML: Python / GRU
+# ==================================================
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+*.stackdump
+
+# ---------- IDE / Editors ----------
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.code-workspace
+*.swp
+*.swo
+
+# ---------- Secrets / Environment ----------
+.env
+.env.*
+!.env.example
+!.env.development.example
+!.env.production.example
+secrets.json
+credentials.json
+appsettings.Local.json
+appsettings.*.Local.json
+
+# ---------- Python / ML ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+.Python
+.python-version
+.venv/
+venv/
+env/
+ENV/
+pip-wheel-metadata/
+*.egg-info/
+.eggs/
+wheels/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ---------- Jupyter ----------
+.ipynb_checkpoints/
+.profile/
+.ipython/
+
+# ---------- ML Models / Scalers ----------
+*.keras
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.joblib
+*.onnx
+*.pt
+*.pth
+*.tflite
+*.pb
+*.ckpt
+*.weights
+*.safetensors
+
+# ---------- ML Data / Generated Results ----------
+*.npy
+*.npz
+*.parquet
+*.feather
+*.arrow
+*.csv
+data/
+Data/
+datasets/
+Dataset/
+results/
+Result/
+outputs/
+logs/
+mlruns/
+wandb/
+tensorboard/
+forecast_gru_24h.csv
+
+# ---------- Python Build ----------
+build/
+dist/
+
+# ---------- Flutter ----------
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+coverage/
+.flutter-plugins-dependencies
+.flutter-plugins
+android/.gradle/
+android/local.properties
+android/key.properties
+android/**/key.properties
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+macos/Pods/
+linux/flutter/ephemeral/
+windows/flutter/ephemeral/
+
+# Flutter signing keys
+*.jks
+*.keystore
+*.mobileprovision
+*.p12
+*.p8
+*.provisionprofile
+
+# ---------- ASP.NET Core / .NET ----------
+**/bin/
+**/obj/
+.vs/
+TestResults/
+artifacts/
+*.user
+*.suo
+*.cache
+*.dll
+*.exe
+*.pdb
+
+# Local ASP.NET configuration
+**/appsettings.Local.json
+**/appsettings.*.Local.json
+
+# ---------- Local Databases ----------
+*.mdf
+*.ldf
+*.sqlite
+*.sqlite3
+*.db
+
+# ---------- Logs / Temporary ----------
+*.log
+*.tmp
+*.temp
+*.bak
+*.old
+
+# ---------- OS / App generated ----------
+.DS_Store
+Thumbs.db

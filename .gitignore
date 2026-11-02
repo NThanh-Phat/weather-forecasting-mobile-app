@@ -142,9 +142,9 @@ artifacts/
 *.pdb
 
 # Local ASP.NET configuration
-**/appsettings.Local.json
-**/appsettings.*.Local.json
-
+**/appsettings.json
+**/appsettings.*.json
+!**/appsettings.example.json
 # ---------- Local Databases ----------
 *.mdf
 *.ldf

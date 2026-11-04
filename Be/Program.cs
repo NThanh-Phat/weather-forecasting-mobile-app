@@ -1,16 +1,14 @@
 using Be.Data;
-using Microsoft.EntityFrameworkCore;
 using Be.Services;
-using Be.DTOs.Provinces;
 using Be.Services.Interfaces;
-
+using Be.Configurations;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
+// Đăng ký Controllers
 builder.Services.AddControllers();
-builder.Services.AddScoped<IProvinceService, ProvinceService>();
 
 // Đăng ký kết nối SQL Server
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -19,13 +17,41 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     )
 );
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// Đăng ký Province Service
+builder.Services.AddScoped<IProvinceService, ProvinceService>();
+
+// Đăng ký cấu hình Open-Meteo
+builder.Services
+    .AddOptions<OpenMeteoOptions>()
+    .Bind(builder.Configuration.GetSection(OpenMeteoOptions.SectionName))
+    .Validate(
+        options => Uri.TryCreate(
+            options.BaseUrl,
+            UriKind.Absolute,
+            out var uri
+        ) && (uri.Scheme == Uri.UriSchemeHttp ||
+              uri.Scheme == Uri.UriSchemeHttps),
+        "Open-Meteo BaseUrl không hợp lệ."
+    )
+    .ValidateOnStart();
+
+// Đăng ký HttpClient cho Open-Meteo
+builder.Services.AddHttpClient("OpenMeteo", (serviceProvider, client) =>
+{
+    var options = serviceProvider
+        .GetRequiredService<IOptions<OpenMeteoOptions>>()
+        .Value;
+
+    client.BaseAddress = new Uri(options.BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
+// Đăng ký Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -33,9 +59,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();

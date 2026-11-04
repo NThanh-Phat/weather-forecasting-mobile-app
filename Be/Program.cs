@@ -1,11 +1,16 @@
 using Be.Data;
 using Microsoft.EntityFrameworkCore;
+using Be.Services;
+using Be.DTOs.Provinces;
+using Be.Services.Interfaces;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
 builder.Services.AddControllers();
+builder.Services.AddScoped<IProvinceService, ProvinceService>();
 
 // Đăng ký kết nối SQL Server
 builder.Services.AddDbContext<ApplicationDbContext>(options =>

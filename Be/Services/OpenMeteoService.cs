@@ -1,10 +1,10 @@
 using System.Globalization;
-using be.DTOs.Weather;
-using be.Services.Interfaces;
+using Be.DTOs.Weather;
+using Be.Services.Interfaces;
 using System.Net.Http;
 using System.Net.Http.Json;
 
-namespace be.Services
+namespace Be.Services
 {
     public class OpenMeteoService : IOpenMeteoService
     {

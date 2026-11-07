@@ -58,6 +58,25 @@ builder.Services.AddHttpClient("OpenMeteo", (serviceProvider, client) =>
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
+builder.Services.AddHttpClient<IPythonMLService, PythonMLService>(
+    (serviceProvider, client) =>
+    {
+    var  configuration = 
+    serviceProvider.GetRequiredService<IConfiguration>();
+    
+    var baseUrl = configuration["PythonML:BaseUrl"];
+
+    if (string.IsNullOrWhiteSpace(baseUrl))
+    {
+        throw new InvalidOperationException(
+            "Chưa cấu hình PythonML:BaseUrl."
+        );
+    }
+    client.BaseAddress = new Uri(baseUrl);
+    client.Timeout = TimeSpan.FromMinutes(2);
+});
+
+
 // ==========================================
 // 6. KHỞI TẠO ỨNG DỤNG
 // ==========================================

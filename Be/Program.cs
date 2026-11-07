@@ -7,20 +7,30 @@ using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Đăng ký Controllers
+// ==========================================
+// 1. ĐĂNG KÝ CONTROLLERS VÀ SWAGGER
+// ==========================================
 builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
-// Đăng ký kết nối SQL Server
+// ==========================================
+// 2. CẤU HÌNH KẾT NỐI DATABASE
+// ==========================================
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection")
     )
 );
 
-// Đăng ký Province Service
+// ==========================================
+// 3. ĐĂNG KÝ SERVICES
+// ==========================================
 builder.Services.AddScoped<IProvinceService, ProvinceService>();
-
-// Đăng ký cấu hình Open-Meteo
+builder.Services.AddScoped<IOpenMeteoService, OpenMeteoService>();
+// ==========================================
+// 4. CẤU HÌNH OPEN-METEO
+// ==========================================
 builder.Services
     .AddOptions<OpenMeteoOptions>()
     .Bind(builder.Configuration.GetSection(OpenMeteoOptions.SectionName))
@@ -35,7 +45,9 @@ builder.Services
     )
     .ValidateOnStart();
 
-// Đăng ký HttpClient cho Open-Meteo
+// ==========================================
+// 5. ĐĂNG KÝ HTTPCLIENT
+// ==========================================
 builder.Services.AddHttpClient("OpenMeteo", (serviceProvider, client) =>
 {
     var options = serviceProvider
@@ -46,12 +58,14 @@ builder.Services.AddHttpClient("OpenMeteo", (serviceProvider, client) =>
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
-// Đăng ký Swagger
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
+// ==========================================
+// 6. KHỞI TẠO ỨNG DỤNG
+// ==========================================
 var app = builder.Build();
 
+// ==========================================
+// 7. CẤU HÌNH MIDDLEWARE
+// ==========================================
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -62,4 +76,7 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 
+// ==========================================
+// 8. CHẠY ỨNG DỤNG
+// ==========================================
 app.Run();

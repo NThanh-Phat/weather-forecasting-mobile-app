@@ -28,6 +28,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // ==========================================
 builder.Services.AddScoped<IProvinceService, ProvinceService>();
 builder.Services.AddScoped<IOpenMeteoService, OpenMeteoService>();
+builder.Services.AddScoped<IForecastService, ForecastService>();
 // ==========================================
 // 4. CẤU HÌNH OPEN-METEO
 // ==========================================

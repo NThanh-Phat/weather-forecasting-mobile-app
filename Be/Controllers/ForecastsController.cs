@@ -4,7 +4,9 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Be.DTOs.Forecasts;
 using Be.Services.Interfaces;
+using Be.Exceptions;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace Be.Controllers
 {
@@ -13,10 +15,14 @@ namespace Be.Controllers
     public class ForecastsController : ControllerBase
     {
         private readonly IForecastService _forecastService;
+        private readonly ILogger<ForecastsController> _logger;
 
-        public ForecastsController(IForecastService forecastService)
+        public ForecastsController(
+            IForecastService forecastService,
+            ILogger<ForecastsController> logger)
         {
             _forecastService = forecastService;
+            _logger = logger;
         }
 
         // POST: api/forecasts
@@ -41,7 +47,9 @@ namespace Be.Controllers
                 return NotFound(new
                 {
                     success = false,
-                    message = ex.Message
+                    message = ex.Message,
+                    provinceId = request.ProvinceId,
+                    errorCode = "PROVINCE_NOT_FOUND"
                 });
             }
             catch (ArgumentException ex)
@@ -49,22 +57,40 @@ namespace Be.Controllers
                 return BadRequest(new
                 {
                     success = false,
-                    message = ex.Message
+                    message = ex.Message,
+                    errorCode = "INVALID_REQUEST"
+                });
+            }
+            catch (ForecastInProgressException ex)
+            {
+                return Conflict(new
+                {
+                    success = false,
+                    message = ex.Message,
+                    provinceId = request.ProvinceId,
+                    errorCode = "FORECAST_IN_PROGRESS"
                 });
             }
             catch (Exception ex)
             {
+                // Ghi lỗi chi tiết vào log Backend
+                _logger.LogError(
+                    ex,
+                    "Lỗi khi thực hiện dự báo cho ProvinceId {ProvinceId}",
+                    request.ProvinceId
+                );
+
                 return StatusCode(500, new
                 {
                     success = false,
-                    message = "Đã xảy ra lỗi khi thực hiện dự báo.",
-                    error = ex.Message
+                    message = "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.",
+                    errorCode = "INTERNAL_SERVER_ERROR"
                 });
             }
         }
 
         // GET: api/forecasts/latest/{provinceId}
-        // Lấy trạng thái và dự báo mới nhất của nhiều tỉnh
+        // Lấy dự báo mới nhất của một tỉnh/thành phố
         [HttpGet("latest/{provinceId:int}")]
         public async Task<IActionResult> GetLatestForecast(int provinceId)
         {
@@ -77,7 +103,9 @@ namespace Be.Controllers
                     return NotFound(new
                     {
                         success = false,
-                        message = "Không tìm thấy dữ liệu dự báo cho tỉnh/thành phố này."
+                        message = "Tỉnh/thành phố chưa có dữ liệu dự báo.",
+                        provinceId = provinceId,
+                        errorCode = "FORECAST_NOT_FOUND"
                     });
                 }
 
@@ -88,27 +116,45 @@ namespace Be.Controllers
                     data = result
                 });
             }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new
+                {
+                    success = false,
+                    message = ex.Message,
+                    provinceId = provinceId,
+                    errorCode = "PROVINCE_NOT_FOUND"
+                });
+            }
             catch (ArgumentException ex)
             {
                 return BadRequest(new
                 {
                     success = false,
-                    message = ex.Message
+                    message = ex.Message,
+                    errorCode = "INVALID_REQUEST"
                 });
             }
             catch (Exception ex)
             {
+                // Ghi lỗi chi tiết vào log Backend
+                _logger.LogError(
+                    ex,
+                    "Lỗi khi lấy dự báo cho ProvinceId {ProvinceId}",
+                    provinceId
+                );
+
                 return StatusCode(500, new
                 {
                     success = false,
-                    message = "Đã xảy ra lỗi khi lấy dữ liệu dự báo.",
-                    error = ex.Message
+                    message = "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.",
+                    errorCode = "INTERNAL_SERVER_ERROR"
                 });
             }
         }
 
         // GET: api/forecasts/latest?provinceIds=1&provinceIds=2
-        // Lấy dự báo mới nhất của nhiều tỉnh/thành phố
+        // Lấy trạng thái và dự báo mới nhất của nhiều tỉnh/thành phố
         [HttpGet("latest")]
         public async Task<IActionResult> GetLatestForecasts(
             [FromQuery] List<int> provinceIds)
@@ -121,7 +167,8 @@ namespace Be.Controllers
                     return BadRequest(new
                     {
                         success = false,
-                        message = "Vui lòng cung cấp danh sách ProvinceId."
+                        message = "Vui lòng cung cấp danh sách ProvinceId.",
+                        errorCode = "INVALID_REQUEST"
                     });
                 }
 
@@ -144,16 +191,23 @@ namespace Be.Controllers
                 return BadRequest(new
                 {
                     success = false,
-                    message = ex.Message
+                    message = ex.Message,
+                    errorCode = "INVALID_REQUEST"
                 });
             }
             catch (Exception ex)
             {
+                // Ghi lỗi chi tiết vào log Backend
+                _logger.LogError(
+                    ex,
+                    "Lỗi khi lấy danh sách dự báo nhiều tỉnh."
+                );
+
                 return StatusCode(500, new
                 {
                     success = false,
-                    message = "Đã xảy ra lỗi khi lấy danh sách dự báo.",
-                    error = ex.Message
+                    message = "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.",
+                    errorCode = "INTERNAL_SERVER_ERROR"
                 });
             }
         }

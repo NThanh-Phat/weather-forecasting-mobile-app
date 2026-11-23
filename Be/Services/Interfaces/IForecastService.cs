@@ -20,5 +20,13 @@ namespace Be.Services.Interfaces
         Task<List<LatestForecastBatchItemResponse>> GetLatestForecastsAsync(
             List<int> provinceIds
         );
+
+        Task<ForecastHistoryResponse> GetForecastHistoryAsync(
+            int provinceId,
+            int page,
+            int pageSize
+        );
+        // Lấy chi tiết một lần dự báo theo ForecastRunId
+        Task<ForecastRunDetailResponse?> GetForecastRunDetailAsync(int forecastRunId);
     }
 }

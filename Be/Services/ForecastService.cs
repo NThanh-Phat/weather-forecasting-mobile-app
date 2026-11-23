@@ -360,8 +360,138 @@ namespace Be.Services
                     Forecast = forecast
                 });
             }
-
+            // Trả về danh sách trạng thái và dự báo của các tỉnh
             return results;
         }
+
+        public async Task<ForecastHistoryResponse> GetForecastHistoryAsync(
+            int provinceId,
+            int page,
+            int pageSize)
+        {
+            // Kiểm tra ProvinceId hợp lệ
+            if (provinceId <= 0)
+                throw new ArgumentException("ProvinceId phải lớn hơn 0.");
+
+            // Kiểm tra số trang hợp lệ
+            if (page <= 0)
+                throw new ArgumentException("Page phải lớn hơn 0.");
+
+            // Giới hạn số bản ghi mỗi trang từ 1 đến 100
+            if (pageSize <= 0 || pageSize > 100)
+                throw new ArgumentException("PageSize phải từ 1 đến 100.");
+
+            // Kiểm tra tỉnh/thành phố có tồn tại trong database
+            bool provinceExists = await _context.Provinces
+                .AnyAsync(p => p.ProvinceId == provinceId);
+
+            if (!provinceExists)
+                throw new KeyNotFoundException("Không tìm thấy tỉnh/thành phố.");
+
+            // Đếm tổng số lần dự báo của tỉnh/thành phố
+            int totalRecords = await _context.ForecastRuns
+                .CountAsync(f => f.ProvinceId == provinceId);
+
+            // Tính tổng số trang dựa trên số bản ghi mỗi trang
+            int totalPages = (int)Math.Ceiling(
+                totalRecords / (double)pageSize
+            );
+
+            // Truy vấn lịch sử và kết hợp bảng ForecastRuns với Provinces
+            var items = await (
+                from forecast in _context.ForecastRuns
+                join province in _context.Provinces
+                    on forecast.ProvinceId equals province.ProvinceId
+                where forecast.ProvinceId == provinceId
+
+                // Sắp xếp lần dự báo mới nhất lên đầu
+                orderby forecast.CreatedAt descending,
+                        forecast.ForecastRunId descending
+
+                // Chỉ lấy các trường cần thiết cho DTO lịch sử
+                select new ForecastHistoryDto
+                {
+                    ForecastRunId = forecast.ForecastRunId,
+                    ProvinceName = province.ProvinceName,
+                    CreatedAt = forecast.CreatedAt
+                }
+            )
+            // Bỏ qua các bản ghi thuộc những trang trước
+            .Skip((page - 1) * pageSize)
+
+            // Giới hạn số bản ghi được trả về trong trang hiện tại
+            .Take(pageSize)
+            .ToListAsync();
+
+            // Đóng gói dữ liệu lịch sử và thông tin phân trang
+            return new ForecastHistoryResponse
+            {
+                Page = page,
+                PageSize = pageSize,
+                TotalRecords = totalRecords,
+                TotalPages = totalPages,
+                Items = items
+            };
+        }
+
+        public async Task<ForecastRunDetailResponse?> GetForecastRunDetailAsync(
+            int forecastRunId)
+        {
+            // Kiểm tra ForecastRunId hợp lệ
+            if (forecastRunId <= 0)
+                throw new ArgumentException("ForecastRunId phải lớn hơn 0.");
+
+            // Tìm lần dự báo trong database
+            var forecastRun = await _context.ForecastRuns
+                .FirstOrDefaultAsync(r => r.ForecastRunId == forecastRunId);
+
+            // Không tìm thấy lần dự báo
+            if (forecastRun == null)
+                return null;
+
+            // Lấy thông tin tỉnh/thành phố
+            var province = await _context.Provinces
+                .FirstOrDefaultAsync(p => p.ProvinceId == forecastRun.ProvinceId);
+
+            // Kiểm tra dữ liệu tỉnh/thành phố
+            if (province == null)
+                throw new KeyNotFoundException(
+                    "Không tìm thấy tỉnh/thành phố của lần dự báo."
+                );
+
+            // Lấy danh sách 24 mốc nhiệt độ đã lưu
+            var forecastDetails = await _context.ForecastDetails
+                .Where(d => d.ForecastRunId == forecastRunId)
+                .OrderBy(d => d.ForecastTime)
+                .Select(d => new ForecastDetailDto
+                {
+                    ForecastTime = d.ForecastTime,
+                    PredictedTemperature = d.PredictedTemperature
+                })
+                .ToListAsync();
+
+            // Đóng gói thông tin thời tiết hiện tại
+            var currentWeather = new CurrentWeatherDto
+            {
+                Temperature = forecastRun.CurrentTemperature,
+                RelativeHumidity = forecastRun.CurrentRelativeHumidity,
+                SurfacePressure = forecastRun.CurrentSurfacePressure,
+                WindSpeed = forecastRun.CurrentWindSpeed,
+                ShortwaveRadiation = forecastRun.CurrentShortwaveRadiation
+            };
+
+            // Trả về chi tiết lần dự báo
+            return new ForecastRunDetailResponse
+            {
+                ForecastRunId = forecastRun.ForecastRunId,
+                ProvinceId = province.ProvinceId,
+                ProvinceName = province.ProvinceName,
+                CreatedAt = forecastRun.CreatedAt,
+                CurrentWeather = currentWeather,
+                Forecasts = forecastDetails
+            };
+        }
+
     }
+
 }

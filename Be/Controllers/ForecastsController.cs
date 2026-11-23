@@ -211,5 +211,102 @@ namespace Be.Controllers
                 });
             }
         }
+
+        // GET: api/forecasts/history?provinceId=1&page=1&pageSize=10
+        // Lấy lịch sử dự báo của một tỉnh/thành phố có phân trang
+        [HttpGet("history")]
+        public async Task<IActionResult> GetForecastHistory(
+            [FromQuery] int provinceId,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                // Gọi Service lấy lịch sử dự báo
+                var result = await _forecastService.GetForecastHistoryAsync(
+                    provinceId,
+                    page,
+                    pageSize
+                );
+
+                // Trả về danh sách lịch sử dự báo
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                // Không tìm thấy tỉnh/thành phố
+                return NotFound(new
+                {
+                    errorCode = "PROVINCE_NOT_FOUND",
+                    message = ex.Message
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                // Tham số đầu vào không hợp lệ
+                return BadRequest(new
+                {
+                    errorCode = "INVALID_REQUEST",
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                // Ghi log khi xảy ra lỗi hệ thống
+                _logger.LogError(ex, "Lỗi khi lấy lịch sử dự báo.");
+
+                return StatusCode(500, new
+                {
+                    errorCode = "INTERNAL_SERVER_ERROR",
+                    message = "Đã xảy ra lỗi khi lấy lịch sử dự báo."
+                });
+            }
+        }
+
+        // GET: api/forecasts/{id}
+        // Lấy chi tiết một lần dự báo theo ForecastRunId
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> GetForecastRunDetail(int id)
+        {
+            try
+            {
+                // Gọi Service lấy chi tiết lần dự báo
+                var result = await _forecastService.GetForecastRunDetailAsync(id);
+
+                // Không tìm thấy lần dự báo
+                if (result == null)
+                {
+                    return NotFound(new
+                    {
+                        errorCode = "FORECAST_NOT_FOUND",
+                        message = "Không tìm thấy lần dự báo."
+                    });
+                }
+
+                // Trả về thông tin chi tiết lần dự báo
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                // Tham số đầu vào không hợp lệ
+                return BadRequest(new
+                {
+                    errorCode = "INVALID_REQUEST",
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                // Ghi log khi xảy ra lỗi hệ thống
+                _logger.LogError(ex, "Lỗi khi lấy chi tiết lần dự báo.");
+
+                return StatusCode(500, new
+                {
+                    errorCode = "INTERNAL_SERVER_ERROR",
+                    message = "Đã xảy ra lỗi khi lấy chi tiết dự báo."
+                });
+            }
+        }
+
     }
 }

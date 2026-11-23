@@ -8,6 +8,7 @@ using Be.DTOs.Ml;
 using Be.Entities;
 using Be.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 
 namespace Be.Services
 {
@@ -30,6 +31,8 @@ namespace Be.Services
         CreateForecastRequest request
     )
         {
+            var totalWatch = Stopwatch.StartNew();
+            var watch = new Stopwatch();
             // 1. Kiem tra ProvinceId
             if (request.ProvinceId <= 0)
             {
@@ -49,9 +52,16 @@ namespace Be.Services
             }
 
             // 3. Lay du lieu thoi tiet tu Open-Meteo
+            watch.Restart();
+
             var weatherData = await _openMeteoService.GetWeatherAsync(
                 province.Latitude,
                 province.Longitude);
+
+            watch.Stop();
+
+            Console.WriteLine(
+                $"[PERFORMANCE] Open-Meteo: {watch.ElapsedMilliseconds} ms");
 
             var hourly = weatherData.Hourly;
 
@@ -100,8 +110,15 @@ namespace Be.Services
                 Longitude = province.Longitude
             };
 
+            watch.Restart();
+
             var pythonResult = await _pythonMLService.PredictAsync(
                 pythonRequest);
+
+            watch.Stop();
+
+            Console.WriteLine(
+                $"[PERFORMANCE] Python ML: {watch.ElapsedMilliseconds} ms");
 
             // 7. Kiem tra ket qua du bao
             if (pythonResult == null || !pythonResult.Success)
@@ -132,10 +149,19 @@ namespace Be.Services
             }
 
             // 8. Tao ForecastRun
+            watch.Restart();
+
             var forecastRun = new ForecastRun
             {
                 ProvinceId = province.ProvinceId,
-                CreatedAt = vietnamNow
+                CreatedAt = vietnamNow,
+                
+                // Lưu thời tiết hiện tại
+                CurrentTemperature = currentWeather.Temperature,
+                CurrentRelativeHumidity = currentWeather.RelativeHumidity,
+                CurrentSurfacePressure = currentWeather.SurfacePressure,
+                CurrentWindSpeed = currentWeather.WindSpeed,
+                CurrentShortwaveRadiation = currentWeather.ShortwaveRadiation
             };
 
             _context.ForecastRuns.Add(forecastRun);
@@ -156,6 +182,11 @@ namespace Be.Services
 
             await _context.SaveChangesAsync();
 
+            watch.Stop();
+
+            Console.WriteLine(
+                $"[PERFORMANCE] SQL Save: {watch.ElapsedMilliseconds} ms");
+
             // 10. Tao response
             var response = new ForecastResponse
             {
@@ -171,6 +202,14 @@ namespace Be.Services
                     })
                     .ToList()
             };
+
+            // 11. Tong thoi gian xu ly
+            totalWatch.Stop();
+
+            Console.WriteLine("--------------------------------");
+            Console.WriteLine(
+                $"[PERFORMANCE] TOTAL: {totalWatch.ElapsedMilliseconds} ms");
+            Console.WriteLine("--------------------------------");
 
             return response;
         }

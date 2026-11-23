@@ -11,5 +11,14 @@ namespace Be.Services.Interfaces
         Task<ForecastResponse> CreateForecastAsync(
             CreateForecastRequest request
         );
+
+        Task<LatestForecastResponse?> GetLatestForecastAsync(
+            int provinceId
+        );
+
+        // Lấy trạng thái và dự báo mới nhất của nhiều tỉnh
+        Task<List<LatestForecastBatchItemResponse>> GetLatestForecastsAsync(
+            List<int> provinceIds
+        );
     }
 }

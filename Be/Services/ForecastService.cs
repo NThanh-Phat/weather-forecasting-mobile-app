@@ -12,7 +12,7 @@ using System.Diagnostics;
 
 namespace Be.Services
 {
-    public class ForecastService: IForecastService
+    public class ForecastService : IForecastService
     {
         private readonly ApplicationDbContext _context;
         private readonly IOpenMeteoService _openMeteoService;
@@ -27,9 +27,9 @@ namespace Be.Services
             _openMeteoService = openMeteoService;
             _pythonMLService = pythonMLService;
         }
-    public async Task<ForecastResponse> CreateForecastAsync(
-        CreateForecastRequest request
-    )
+        public async Task<ForecastResponse> CreateForecastAsync(
+            CreateForecastRequest request
+        )
         {
             var totalWatch = Stopwatch.StartNew();
             var watch = new Stopwatch();
@@ -155,7 +155,7 @@ namespace Be.Services
             {
                 ProvinceId = province.ProvinceId,
                 CreatedAt = vietnamNow,
-                
+
                 // Lưu thời tiết hiện tại
                 CurrentTemperature = currentWeather.Temperature,
                 CurrentRelativeHumidity = currentWeather.RelativeHumidity,
@@ -212,6 +212,130 @@ namespace Be.Services
             Console.WriteLine("--------------------------------");
 
             return response;
+        }
+        public async Task<LatestForecastResponse?> GetLatestForecastAsync(
+            int provinceId)
+        {
+            if (provinceId <= 0)
+                throw new ArgumentException("ProvinceId phải lớn hơn 0.");
+
+            // 1. Kiểm tra tỉnh/thành phố
+            var province = await _context.Provinces
+                .FirstOrDefaultAsync(p => p.ProvinceId == provinceId);
+
+            if (province == null)
+                return null;
+
+            // 2. Lấy lần dự báo mới nhất
+            var latestRun = await _context.ForecastRuns
+                .Where(r => r.ProvinceId == provinceId)
+                .OrderByDescending(r => r.CreatedAt)
+                .ThenByDescending(r => r.ForecastRunId)
+                .FirstOrDefaultAsync();
+
+            if (latestRun == null)
+                return null;
+
+            // 3. Lấy 24 mốc dự báo
+            var forecastDetails = await _context.ForecastDetails
+                .Where(d => d.ForecastRunId == latestRun.ForecastRunId)
+                .OrderBy(d => d.ForecastTime)
+                .Select(d => new ForecastDetailDto
+                {
+                    ForecastTime = d.ForecastTime,
+                    PredictedTemperature = d.PredictedTemperature
+                })
+                .ToListAsync();
+
+            // 4. Trả về kết quả
+            return new LatestForecastResponse
+            {
+                ForecastRunId = latestRun.ForecastRunId,
+                ProvinceId = province.ProvinceId,
+                ProvinceName = province.ProvinceName,
+                CreatedAt = latestRun.CreatedAt,
+
+                CurrentWeather = new CurrentWeatherDto
+                {
+                    Temperature = latestRun.CurrentTemperature,
+                    RelativeHumidity = latestRun.CurrentRelativeHumidity,
+                    SurfacePressure = latestRun.CurrentSurfacePressure,
+                    WindSpeed = latestRun.CurrentWindSpeed,
+                    ShortwaveRadiation = latestRun.CurrentShortwaveRadiation
+                },
+
+                Forecasts = forecastDetails
+            };
+        }
+
+        // Lấy trạng thái và dự báo mới nhất của nhiều tỉnh
+        public async Task<List<LatestForecastBatchItemResponse>> GetLatestForecastsAsync(
+            List<int> provinceIds)
+        {
+            // Kiểm tra danh sách đầu vào
+            if (provinceIds == null || provinceIds.Count == 0)
+                throw new ArgumentException("Danh sách ProvinceId không được để trống.");
+
+            if (provinceIds.Any(id => id <= 0))
+                throw new ArgumentException("Tất cả ProvinceId phải lớn hơn 0.");
+
+            // Loại bỏ ProvinceId trùng lặp
+            var uniqueProvinceIds = provinceIds.Distinct().ToList();
+
+            var results = new List<LatestForecastBatchItemResponse>();
+
+            foreach (var provinceId in uniqueProvinceIds)
+            {
+                // Kiểm tra tỉnh có tồn tại
+                var province = await _context.Provinces
+                    .FirstOrDefaultAsync(p => p.ProvinceId == provinceId);
+
+                if (province == null)
+                {
+                    results.Add(new LatestForecastBatchItemResponse
+                    {
+                        ProvinceId = provinceId,
+                        ProvinceName = null,
+                        ProvinceExists = false,
+                        HasForecast = false,
+                        Message = "Không tìm thấy tỉnh/thành phố.",
+                        Forecast = null
+                    });
+
+                    continue;
+                }
+
+                // Lấy dự báo mới nhất của tỉnh
+                var forecast = await GetLatestForecastAsync(provinceId);
+
+                if (forecast == null)
+                {
+                    results.Add(new LatestForecastBatchItemResponse
+                    {
+                        ProvinceId = provinceId,
+                        ProvinceName = province.ProvinceName,
+                        ProvinceExists = true,
+                        HasForecast = false,
+                        Message = "Tỉnh/thành phố chưa có dữ liệu dự báo.",
+                        Forecast = null
+                    });
+
+                    continue;
+                }
+
+                // Tỉnh đã có dữ liệu dự báo
+                results.Add(new LatestForecastBatchItemResponse
+                {
+                    ProvinceId = provinceId,
+                    ProvinceName = province.ProvinceName,
+                    ProvinceExists = true,
+                    HasForecast = true,
+                    Message = "Đã có dữ liệu dự báo.",
+                    Forecast = forecast
+                });
+            }
+
+            return results;
         }
     }
 }
